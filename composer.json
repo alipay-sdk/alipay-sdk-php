@@ -1,0 +1,15 @@
+{
+    "name": "alipay-sdk/alipay-sdk-php",
+    "description": "Alipay Open Platform SDK PHP Version",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "luxin88",
+            "email": "luxin88@gmail.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "files": ["src/AopSdk.php"]
+    }
+}
