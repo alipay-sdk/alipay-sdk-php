@@ -68,52 +68,19 @@ class AopClient {
 
 	public function getSignContent($params) {
 		ksort($params);
+        $stringToBeSigned = http_build_query($params);
+        $stringToBeSigned = urldecode($stringToBeSigned);
 
-		$stringToBeSigned = "";
-		$i = 0;
-		foreach ($params as $k => $v) {
-			if (false === $this->checkEmpty($v) && "@" != substr($v, 0, 1)) {
-
-				// 转换成目标字符集
-				$v = $this->characet($v, $this->postCharset);
-
-				if ($i == 0) {
-					$stringToBeSigned .= "$k" . "=" . "$v";
-				} else {
-					$stringToBeSigned .= "&" . "$k" . "=" . "$v";
-				}
-				$i++;
-			}
-		}
-
-		unset ($k, $v);
 		return $stringToBeSigned;
 	}
 
 
 	//此方法对value做urlencode
 	public function getSignContentUrlencode($params) {
-		ksort($params);
+        ksort($params);
+        $stringToBeSigned = http_build_query($params);
 
-		$stringToBeSigned = "";
-		$i = 0;
-		foreach ($params as $k => $v) {
-			if (false === $this->checkEmpty($v) && "@" != substr($v, 0, 1)) {
-
-				// 转换成目标字符集
-				$v = $this->characet($v, $this->postCharset);
-
-				if ($i == 0) {
-					$stringToBeSigned .= "$k" . "=" . urlencode($v);
-				} else {
-					$stringToBeSigned .= "&" . "$k" . "=" . urlencode($v);
-				}
-				$i++;
-			}
-		}
-
-		unset ($k, $v);
-		return $stringToBeSigned;
+        return $stringToBeSigned;
 	}
 
 	protected function sign($data, $signType = "RSA") {
@@ -225,10 +192,7 @@ class AopClient {
 		}
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-
-
-
-		$reponse = curl_exec($ch);
+        $response = curl_exec($ch);
 
 		if (curl_errno($ch)) {
 
@@ -236,7 +200,7 @@ class AopClient {
 		} else {
 			$httpStatusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 			if (200 !== $httpStatusCode) {
-				throw new Exception($reponse, $httpStatusCode);
+				throw new Exception($response, $httpStatusCode);
 			}
 		}
 
@@ -396,18 +360,16 @@ class AopClient {
 			$preString=$this->getSignContentUrlencode($totalParams);
 			//拼接GET请求串
 			$requestUrl = $this->gatewayUrl."?".$preString;
-			
+
 			return $requestUrl;
 		} else {
 			//拼接表单字符串
 			return $this->buildRequestForm($totalParams);
 		}
 
-
 	}
 
-
-
+	
 	/**
      * 建立请求，以表单HTML形式构造（默认）
      * @param $para_temp 请求参数数组
@@ -416,7 +378,9 @@ class AopClient {
 	protected function buildRequestForm($para_temp) {
 		
 		$sHtml = "<form id='alipaysubmit' name='alipaysubmit' action='".$this->gatewayUrl."?charset=".trim($this->postCharset)."' method='POST'>";
-		while (list ($key, $val) = each ($para_temp)) {
+
+		foreach ($para_temp as $key=>$val){
+		//while (list ($key, $val) = each ($para_temp)) {
 			if (false === $this->checkEmpty($val)) {
 				//$val = $this->characet($val, $this->postCharset);
 				$val = str_replace("'","&apos;",$val);
@@ -427,12 +391,10 @@ class AopClient {
 
 		//submit按钮控件请不要含有name属性
         $sHtml = $sHtml."<input type='submit' value='ok' style='display:none;''></form>";
-		
 		$sHtml = $sHtml."<script>document.forms['alipaysubmit'].submit();</script>";
 		
 		return $sHtml;
 	}
-
 
 	public function execute($request, $authToken = null, $appInfoAuthtoken = null) {
 
@@ -452,7 +414,6 @@ class AopClient {
 		} else {
 			$iv = $this->apiVersion;
 		}
-
 
 		//组装系统参数
 		$sysParams["app_id"] = $this->appId;
@@ -499,24 +460,21 @@ class AopClient {
 
 		}
 
+		$totalParams = array_merge($apiParams, $sysParams);
 
 		//签名
-		$sysParams["sign"] = $this->generateSign(array_merge($apiParams, $sysParams), $this->signType);
+        $totalParams["sign"] = $this->generateSign($totalParams, $this->signType);
 
 
 		//系统参数放入GET请求串
 		$requestUrl = $this->gatewayUrl . "?";
-		foreach ($sysParams as $sysParamKey => $sysParamValue) {
-			$requestUrl .= "$sysParamKey=" . urlencode($this->characet($sysParamValue, $this->postCharset)) . "&";
-		}
-		$requestUrl = substr($requestUrl, 0, -1);
-
+		$requestUrl .= http_build_query($totalParams);
 
 		//发起HTTP请求
 		try {
 			$resp = $this->curl($requestUrl, $apiParams);
 		} catch (Exception $e) {
-
+            throw $e;
 			$this->logCommunicationError($sysParams["method"], $requestUrl, "HTTP_ERROR_" . $e->getCode(), $e->getMessage());
 			return false;
 		}
@@ -527,7 +485,6 @@ class AopClient {
 
 		// 将返回结果转换本地文件编码
 		$r = iconv($this->postCharset, $this->fileCharset . "//IGNORE", $resp);
-
 
 
 		$signData = null;
@@ -541,7 +498,7 @@ class AopClient {
 			}
 		} else if ("xml" == $this->format) {
 			$disableLibxmlEntityLoader = libxml_disable_entity_loader(true);
-			$respObject = @ simplexml_load_string($resp);
+			$respObject = @simplexml_load_string($resp);
 			if (false !== $respObject) {
 				$respWellFormed = true;
 
@@ -577,7 +534,7 @@ class AopClient {
 
 				$r = iconv($this->postCharset, $this->fileCharset . "//IGNORE", $resp);
 				$disableLibxmlEntityLoader = libxml_disable_entity_loader(true);
-				$respObject = @ simplexml_load_string($r);
+				$respObject = @simplexml_load_string($r);
 				libxml_disable_entity_loader($disableLibxmlEntityLoader);
 
 			}
@@ -601,8 +558,6 @@ class AopClient {
 				//				$data = iconv($fileType, $targetCharset.'//IGNORE', $data);
 			}
 		}
-
-
 		return $data;
 	}
 
