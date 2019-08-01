@@ -1,6 +1,7 @@
 {
     "name": "alipay-sdk-packagist/alipay-sdk-php",
     "description": "Alipay Open Platform SDK PHP Version",
+    "version": "v3.4.0",
     "license": "MIT",
     "authors": [
         {
