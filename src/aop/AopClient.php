@@ -470,77 +470,7 @@ class AopClient {
 		$requestUrl = $this->gatewayUrl . "?";
 		$requestUrl .= http_build_query($totalParams);
 
-		//发起HTTP请求
-		try {
-			$resp = $this->curl($requestUrl, $apiParams);
-		} catch (Exception $e) {
-            throw $e;
-			$this->logCommunicationError($sysParams["method"], $requestUrl, "HTTP_ERROR_" . $e->getCode(), $e->getMessage());
-			return false;
-		}
-
-		//解析AOP返回结果
-		$respWellFormed = false;
-
-
-		// 将返回结果转换本地文件编码
-		$r = iconv($this->postCharset, $this->fileCharset . "//IGNORE", $resp);
-
-
-		$signData = null;
-
-		if ("json" == $this->format) {
-
-			$respObject = json_decode($r);
-			if (null !== $respObject) {
-				$respWellFormed = true;
-				$signData = $this->parserJSONSignData($request, $resp, $respObject);
-			}
-		} else if ("xml" == $this->format) {
-			$disableLibxmlEntityLoader = libxml_disable_entity_loader(true);
-			$respObject = @simplexml_load_string($resp);
-			if (false !== $respObject) {
-				$respWellFormed = true;
-
-				$signData = $this->parserXMLSignData($request, $resp);
-			}
-			libxml_disable_entity_loader($disableLibxmlEntityLoader);
-		}
-
-
-		//返回的HTTP文本不是标准JSON或者XML，记下错误日志
-		if (false === $respWellFormed) {
-			$this->logCommunicationError($sysParams["method"], $requestUrl, "HTTP_RESPONSE_NOT_WELL_FORMED", $resp);
-			return false;
-		}
-
-		// 验签
-		$this->checkResponseSign($request, $signData, $resp, $respObject);
-
-		// 解密
-		if (method_exists($request,"getNeedEncrypt") &&$request->getNeedEncrypt()){
-
-			if ("json" == $this->format) {
-
-
-				$resp = $this->encryptJSONSignSource($request, $resp);
-
-				// 将返回结果转换本地文件编码
-				$r = iconv($this->postCharset, $this->fileCharset . "//IGNORE", $resp);
-				$respObject = json_decode($r);
-			}else{
-
-				$resp = $this->encryptXMLSignSource($request, $resp);
-
-				$r = iconv($this->postCharset, $this->fileCharset . "//IGNORE", $resp);
-				$disableLibxmlEntityLoader = libxml_disable_entity_loader(true);
-				$respObject = @simplexml_load_string($r);
-				libxml_disable_entity_loader($disableLibxmlEntityLoader);
-
-			}
-		}
-
-		return $respObject;
+		return $requestUrl;
 	}
 
 	/**
@@ -1178,3 +1108,4 @@ class AopClient {
 
 
 }
+
